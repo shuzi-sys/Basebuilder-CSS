@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "M6LQUP0o+oc=",
+  "success": true,
+  "projectFilePath": "H:\\steamcmd\\pluginmaking\\Plugintest\\Plugintest.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\USER\\.nuget\\packages\\dapper\\2.1.66\\dapper.2.1.66.nupkg.sha512",
+    "C:\\Users\\USER\\.nuget\\packages\\stub.system.data.sqlite.core.netstandard\\1.0.119\\stub.system.data.sqlite.core.netstandard.1.0.119.nupkg.sha512",
+    "C:\\Users\\USER\\.nuget\\packages\\system.data.sqlite.core\\1.0.119\\system.data.sqlite.core.1.0.119.nupkg.sha512"
+  ],
+  "logs": []
+}
