@@ -83,7 +83,29 @@ public static class extensiones
         return result + Offset;
     }
 
+    public static void SetHP(this CCSPlayerController player, int health = 100)
+    {
+        if (player == null || !player.IsValid || !player.PawnIsAlive) return;
+        player.Health = health;
+        player.PlayerPawn.Value.Health = health;
+        if (health > 100)
+        {
+            player.MaxHealth = health;
+            player.PlayerPawn.Value.MaxHealth = health;
+        }
+            Utilities.SetStateChanged(player.PlayerPawn.Value, "CBaseEntity", "m_iHealth");
+            Utilities.SetStateChanged(player.PlayerPawn.Value, "CBaseEntity", "m_iMaxHealth");
+    }
 
+    public static void SetArmor(this CCSPlayerController player, int armor)
+    {
+        if (player == null || !player.IsValid || !player.PawnIsAlive) return;
+        if (armor > 0)
+        {
+            player.PlayerPawn.Value.ArmorValue = armor;
+            Utilities.SetStateChanged(player.PlayerPawn.Value, "CBaseEntity", "m_ArmorValue");
+        }
+    }
 
 }
 

@@ -20,11 +20,26 @@ public partial class Plugintest
 {
     public void OnTick()
     {
+        // buildtime/preptime texts
+        ShowBuildTime();
+
         // jugadores != null must be checked in order to proceed to all the methods for players.
         foreach (var player in Utilities.GetPlayers().Where(p => p != null && p.PawnIsAlive))
         {
+
             bool isPressing = player.Buttons.HasFlag(PlayerButtons.Use);
             bool wasPressing = wasPressingMap.ContainsKey(player) && wasPressingMap[player];
+
+            if (isbuildtime)
+            {
+                player.PrintToCenterHtml("Build time:" + this.buildtime);
+            }
+
+            if (ispreptime)
+            {
+                player.PrintToCenterHtml("Preparation time:" + this.preptime);
+            }
+
 
             // Checking R usage (Rotate)
             if (player.Buttons.HasFlag(PlayerButtons.Reload))
@@ -48,6 +63,11 @@ public partial class Plugintest
                 }
             }
 
+            // Checking self menu 
+            if (player.Buttons.HasFlag(PlayerButtons.Alt1))
+            {
+
+            }
 
             // Checking E usage (Grab)
             if (isPressing && !wasPressing)
@@ -195,4 +215,8 @@ public partial class Plugintest
         }
     }
 
+    public void ShowBuildTime()
+    {
+
+    }
 }
