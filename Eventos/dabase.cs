@@ -10,6 +10,7 @@ using CounterStrikeSharp.API.Modules.Entities;
 using System.Runtime.CompilerServices;
 using System.Reflection.Emit;
 using System.Drawing;
+using Plugintest;
 using Microsoft.Data.Sqlite;
 using Dapper;
 
@@ -36,6 +37,8 @@ public class PlayerData
     public int Zvl { get; set; }
 
     // PREFERENCES / CONFIG
+    public Classes HumanClass { get; set; }
+    public Classes ZombieClass { get; set; }
     public string SavedHumanClass { get; set; }
     public string SavedZombieClass { get; set; }
     public string SavedShopPreferencesPrimary { get; set; }
@@ -143,10 +146,31 @@ public static class dabase
             if (player != null && playerConfig != null && playerUpgrades != null)
             {
                 Console.WriteLine("DEBUG: Player encontrado en la base de datos");
-                PlayerData connectedPlayer = new PlayerData();
-                MergeProperties(player, connectedPlayer);
-                MergeProperties(playerConfig, connectedPlayer);
-                MergeProperties(playerUpgrades, connectedPlayer);
+                PlayerData connectedPlayer = new PlayerData()
+                {
+                    SteamID = player.SteamID,
+                    Experience = player.Experience,
+                    Level = player.Level,
+                    Resets = player.Resets,
+
+                    AvailableH = playerUpgrades.AvailableH,
+                    AvailableZ = playerUpgrades.AvailableZ,
+                    Hdmg = playerUpgrades.Hdmg,
+                    Zdmg = playerUpgrades.Zdmg,
+                    Hhp = playerUpgrades.Hhp,
+                    Zhp = playerUpgrades.Zhp,
+                    Hvl = playerUpgrades.Hvl,
+                    Zvl = playerUpgrades.Zvl,
+
+                    SavedHumanClass = playerConfig.SavedHumanClass,
+                    SavedZombieClass = playerConfig.SavedZombieClass,
+                    SavedShopPreferencesPrimary = playerConfig.SavedShopPreferencesPrimary,
+                    SavedShopPreferencesSecondary = playerConfig.SavedShopPreferencesSecondary,
+                    SavedFavoriteColour = playerConfig.SavedFavoriteColour
+                };
+
+
+                Console.WriteLine("Se va a intentar meter un player con experiencia " + connectedPlayer.Experience);
                 return connectedPlayer;
             }
             else
@@ -164,6 +188,8 @@ public static class dabase
                 INSERT INTO PlayersUpgrades (SteamID, AvailableH, AvailableZ, Hdmg, Zdmg, Hhp, Zhp, Hvl, Zvl)
                 VALUES (@SteamID, @AvailableH, @AvailableZ, @Hdmg, @Zdmg, @Hhp, @Zhp, @Hvl, @Zvl)";
 
+                string humanclass = MenuUI.humanslist[0].name;
+                string zombieclass = MenuUI.zombieslist[0].name;
                 var newplayer = new PlayerData
                 {
                     SteamID = SteamID,
@@ -180,16 +206,44 @@ public static class dabase
                     Hvl = 0,
                     Zvl = 0,
                     // Preferences / config
-                    SavedHumanClass = "Scalper",
-                    SavedZombieClass = "Rezagado",
+                    SavedHumanClass = humanclass,
+                    SavedZombieClass = zombieclass,
                     SavedShopPreferencesPrimary = null,
                     SavedShopPreferencesSecondary = null,
                     SavedFavoriteColour = null
                 };
 
-                connection.Execute(addPlayer, newplayer);
-                connection.Execute(addPlayerConfig, newplayer);
-                connection.Execute(addPlayerUpgrades, newplayer);
+                connection.Execute(addPlayer, new
+                {
+                    SteamID = newplayer.SteamID,
+                    Experience = newplayer.Experience,
+                    Level = newplayer.Level,
+                    Resets = newplayer.Resets
+                });
+
+                connection.Execute(addPlayerConfig, new
+                {
+                    SteamID = newplayer.SteamID,
+                    SavedHumanClass = newplayer.SavedHumanClass,
+                    SavedZombieClass = newplayer.SavedZombieClass,
+                    SavedShopPreferencesPrimary = newplayer.SavedShopPreferencesPrimary,
+                    SavedShopPreferencesSecondary = newplayer.SavedShopPreferencesSecondary,
+                    SavedFavoriteColour = newplayer.SavedFavoriteColour
+                });
+
+                connection.Execute(addPlayerUpgrades, new
+                {
+                    SteamID = newplayer.SteamID,
+                    AvailableH = newplayer.AvailableH,
+                    AvailableZ = newplayer.AvailableZ,
+                    Hdmg = newplayer.Hdmg,
+                    Zdmg = newplayer.Zdmg,
+                    Hhp = newplayer.Hhp,
+                    Zhp = newplayer.Zhp,
+                    Hvl = newplayer.Hvl,
+                    Zvl = newplayer.Zvl
+                });
+
                 Console.WriteLine("DEBUG: Jugador creado con exito");
                 return newplayer;
             }
@@ -248,15 +302,4 @@ public static class dabase
         }
     }
 
-    public static void MergeProperties<T>(T Source, T Target)
-    {
-        foreach (var prop in typeof(T).GetProperties())
-        {
-            var value = prop.GetValue(Source);
-            if (value != null)
-            {
-                prop.SetValue(Target, value);
-            }
-        }
-    }
 }

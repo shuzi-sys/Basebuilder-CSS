@@ -7,12 +7,43 @@ using CounterStrikeSharp.API.Modules.Extensions;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Utils;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 
 namespace Plugintest;
 
 public partial class Plugintest
 {
+    private HookResult CBaseEntity_TakeDamageOldFunc(DynamicHook hook)
+    {
+        CEntityInstance ent = null;
+        ent = hook.GetParam<CEntityInstance>(0);
+        CCSPlayerPawn? playerpawn = ent.As<CCSPlayerPawn>();
 
+        var a = hook.GetParam<CTakeDamageInfo>(1);
+        CCSPlayerPawn? attackerpawn = a.Attacker.Value?.As<CCSPlayerPawn>();
+
+        CCSPlayerController? player = playerpawn.OriginalController.Value;
+        CCSPlayerController? attacker = attackerpawn.OriginalController.Value;
+
+        if (accounts.ContainsKey(attacker) && playerpawn.IsValid)
+        {
+            if (attacker.Team == CsTeam.CounterTerrorist)
+            {
+                a.Damage += ((accounts[attacker].Resets + 1) * (accounts[attacker].Hdmg * 25));
+            }
+            else
+            {
+                a.Damage += ((accounts[attacker].Resets + 1) * (accounts[attacker].Zdmg * 25));
+            }
+            Server.PrintToConsole($"Jugador: {attacker.PlayerName} ataco a: {player.PlayerName} por: {a.Damage}");
+            return HookResult.Continue;
+        }
+        else
+        {
+            Server.PrintToConsole($"No se pudo encontrar al atacante {attacker.PlayerName} en playeraccounts");
+            return HookResult.Continue;
+        }
+    }
     public void OnClientConnected(int playerSlot)
     {
         Console.WriteLine("hola jugador conectado");
@@ -97,8 +128,30 @@ public partial class Plugintest
         var name = player.PlayerName;
         var playerid = player.SteamID.ToString();
         Console.WriteLine("Se capturo al usuario" + name + "con steamid " + playerid);
-        var playerdata = dabase.InitializePlayer(playerid);
-        accounts.Add(player, playerdata);
+        if (!player.IsBot)
+        {
+            var playerdata = dabase.InitializePlayer(playerid);
+
+            foreach (var humanclass in MenuUI.humanslist)
+            {
+                if (humanclass.name.Contains(playerdata.SavedHumanClass, StringComparison.OrdinalIgnoreCase))
+                {
+                    playerdata.HumanClass = humanclass;
+                    Console.WriteLine("Se intento colocar la clase humano guardada");
+                }
+            }
+
+            foreach (var zombieclass in MenuUI.zombieslist)
+            {
+                if (zombieclass.name.Contains(playerdata.SavedZombieClass, StringComparison.OrdinalIgnoreCase))
+                {
+                    playerdata.ZombieClass = zombieclass;
+                    Console.WriteLine("Se intento colocar la clase zombie guardada");
+                }
+            }
+
+            accounts.Add(player, playerdata);
+        }
         return HookResult.Continue;
     }
 
@@ -106,41 +159,56 @@ public partial class Plugintest
     public HookResult EventPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
     {
         var player = @event.Userid;
-        var playerdata = accounts[player];
-        if (player != null && player.IsValid && player.PawnIsAlive && player.Team == CounterStrikeSharp.API.Modules.Utils.CsTeam.CounterTerrorist) 
+        if (!player.IsBot)
         {
-            clearClaimsByPlayer(player);
+            var playerdata = accounts[player];
+            if (player != null && player.IsValid && player.PawnIsAlive && player.Team == CounterStrikeSharp.API.Modules.Utils.CsTeam.CounterTerrorist)
+            {
+                clearClaimsByPlayer(player);
+            }
+            dabase.SavePlayer(playerdata);
+            accounts.Remove(player);
+            
         }
-        dabase.SavePlayer(playerdata);
-        accounts.Remove(player);
         return HookResult.Continue;
     }
 
     [GameEventHandler]
     public HookResult EventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
-            Console.WriteLine("Evento Player Spawn triggereado");
-            var player = @event.Userid;
+        Console.WriteLine("Evento Player Spawn triggereado");
+        var player = @event.Userid;
+        if (!player.IsBot)
+        {
+            var playerdata = accounts[player];
             Console.WriteLine("Spawneo " + player.PlayerName);
+
             if (player.Team == CounterStrikeSharp.API.Modules.Utils.CsTeam.CounterTerrorist)
             {
-                Console.WriteLine("Humano");
+                Server.NextFrame(() =>
+                {
+                    player.SetHP(playerdata.HumanClass.classHP);
+                    Console.WriteLine("Humano con clase: " + playerdata.HumanClass.name);
+                });
             }
+
             if (player.Team == CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist)
             {
-            Server.NextFrame(() =>
-            {
-                Console.WriteLine("Intentando sobreescribir vida");
-                player.SetHP(3000 + 1500);
-
-            });
+                Server.NextFrame(() =>
+                {
+                    player.SetHP(playerdata.ZombieClass.classHP);
+                    Console.WriteLine("Zombie con clase: " + playerdata.ZombieClass.name);
+                });
             }
+        }
         return HookResult.Continue;
     }
 
     [GameEventHandler]
     public HookResult EventRoundEnd(EventRoundStart @event, GameEventInfo info)
     {
+        var eventname = @event.EventName;
+        Console.WriteLine("DEBUG: Event round end con nombre " +  eventname);
         Console.WriteLine("DEBUG: Ronda terminada");
         clearClaims();
         clearColors();
@@ -172,10 +240,44 @@ public partial class Plugintest
     public HookResult EventPlayerHurt(EventPlayerHurt @event, GameEventInfo info)
     {
         Console.WriteLine("Dañaste a un jugador");
+        @event.DmgHealth = 1000;
+        return HookResult.Changed;
+    }
+
+    [GameEventHandler]
+    public HookResult EventPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
+    {
+        var player = @event.Userid;
+        switch (selectedMode) {
+            case 1: /* normal round */
+
+                // handle usual zombie respawn
+                if (player != null && player.Team == CsTeam.Terrorist)
+                {
+                    var timer = AddTimer(2, () =>
+                    {
+                        player.Respawn();
+                    });
+                }
+                break;
+
+            case 2: /* realistic round */
+
+                break;
+
+            case 3: /* survivor round */
+
+                break;
+
+            case 4: /* nemesis round */
+
+                break;
+        }
 
         return HookResult.Continue;
     }
 
+    // OTHERS
     public void clearClaims()
     {
         claimedblocks.Clear();
@@ -225,8 +327,8 @@ public partial class Plugintest
                         {
                             MenuUI.BuyMenuUI(this, player);
                         }
-                        player.Respawn();
                     }
+                    TeleportToLobby(CsTeam.CounterTerrorist);
                 }
             }
 

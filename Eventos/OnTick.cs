@@ -40,6 +40,10 @@ public partial class Plugintest
                 player.PrintToCenterHtml("Preparation time:" + this.preptime);
             }
 
+            if (player.Buttons.HasFlag(PlayerButtons.Alt1))
+            {
+                MenuUI.MainMenuUI(this, player);
+            }
 
             // Checking R usage (Rotate)
             if (player.Buttons.HasFlag(PlayerButtons.Reload))

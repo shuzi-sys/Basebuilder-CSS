@@ -16,6 +16,7 @@ using Dapper;
 using CounterStrikeSharp.API.Modules.Timers;
 using System.Text.Json.Serialization;
 using System.Security.Cryptography.X509Certificates;
+using CounterStrikeSharp.API.Modules.Memory;
 
 
 namespace Plugintest;
@@ -56,6 +57,7 @@ public partial class Plugintest : BasePlugin
 
     public override void Load(bool hotReload)
     {
+        VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Hook(CBaseEntity_TakeDamageOldFunc, HookMode.Pre);
 
         AddCommand("css_online", "definido", (player, commandInfo) =>
         {
@@ -161,6 +163,12 @@ public partial class Plugintest : BasePlugin
         dabase.Initialize();
         base.Load(hotReload);
     }
+    
+    public override void Unload(bool hotReload)
+    {
+        VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Unhook(CBaseEntity_TakeDamageOldFunc, HookMode.Pre);
+        base.Unload(hotReload);
+    }
 
     [GameEventHandler]
     public HookResult EventPlayerTeam(bool force)
@@ -249,6 +257,54 @@ public partial class Plugintest : BasePlugin
                 commandInfo.ReplyToCommand("No se encontro informacion del player");
             }
 
+        }
+    }
+
+    [ConsoleCommand("css_myxp", "Opens the main menu")]
+    public void OnMyxpCommand(CCSPlayerController? player, CommandInfo commandInfo)
+    {
+        if (player != null)
+        {
+            if (accounts.ContainsKey(player))
+            {
+                player.PrintToChat("Your experience is " + accounts[player].Experience);
+            }
+            else
+            {
+                commandInfo.ReplyToCommand("No se encontro informacion del player");
+            }
+
+        }
+    }
+
+    [ConsoleCommand("css_editxp", "Opens the main menu")]
+    [CommandHelper(minArgs: 2, usage: "[name] [Added Experience]", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    public void OnEditxpCommand(CCSPlayerController? player, CommandInfo commandInfo)
+    {
+        string playerName = commandInfo.GetArg(1);
+        int.TryParse(commandInfo.GetArg(2), out int experience);
+        if (playerName != null && experience != null)
+        {
+            var target = Utilities.GetPlayers().FirstOrDefault(p => p.PlayerName.Contains(playerName, StringComparison.OrdinalIgnoreCase));
+            if (accounts.ContainsKey(target))
+            {
+                accounts[player].Experience += experience;
+                commandInfo.ReplyToCommand("Jugador " + playerName + " recibio " + experience + " de experiencia.");
+            }
+            else
+            {
+                commandInfo.ReplyToCommand("No se encontro informacion del player");
+            }
+
+        }
+    }
+
+    [ConsoleCommand("css_myaccount", "Opens the main menu")]
+    public void OnMyaccountCommand(CCSPlayerController? player, CommandInfo commandInfo)
+    {
+        if (accounts.ContainsKey(player))
+        {
+            MenuUI.StatsMenuUI(this, player);
         }
     }
 

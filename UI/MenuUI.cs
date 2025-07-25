@@ -88,7 +88,8 @@ public static class MenuUI
     // Zombie classes
     public static List<Classes> zombieslist = new()
     {
-    new Classes { name = "Rezagado (LVL: 1) (R:0) (HP: 3000)", classHP = 3000, level = 1, reset = 0, classTextureFile = ""}
+    new Classes { name = "Rezagado (LVL: 1) (R:0) (HP: 3000)", classHP = 3000, level = 1, reset = 0, classTextureFile = ""},
+    new Classes { name = "agustin ariel calvo (LVL: 1) (R:0) (HP: 3000)", classHP = 666, level = 1, reset = 0, classTextureFile = ""}
     };
 
     //=======================================================================================================================================
@@ -202,17 +203,27 @@ public static class MenuUI
         {
             humanMenu.AddItem(humanclass.name, (player, option) =>
             {
+                // Check for requirements
                 if (Plugintest.accounts[player].Level == humanclass.level && Plugintest.accounts[player].Resets == humanclass.reset)
                 {
                     player.PrintToChat("Elegiste el " + humanclass.name);
+                    Plugintest.accounts[player].HumanClass = humanclass;
+                    // The class name must be saved since we use it in the data base!
+                    Plugintest.accounts[player].SavedHumanClass = humanclass.name;
+                    //
+                    if (player.PawnIsAlive && player.Team == CounterStrikeSharp.API.Modules.Utils.CsTeam.CounterTerrorist)
+                    {
+                        player.Respawn();
+                    }
                 }
                 else
                 {
                     player.PrintToChat("No cumples con los requisitos para esta clase!");
                 }
             });
-            humanMenu.Display(player, 20);
+            
         }
+        humanMenu.Display(player, 20);
     }
 
     public static void ZombieClassMenuUI(BasePlugin plugin, CCSPlayerController player)
@@ -223,17 +234,27 @@ public static class MenuUI
         {
             zombieMenu.AddItem(zombieclass.name, (player, option) =>
             {
+                // Check for requirements
                 if (Plugintest.accounts[player].Level == zombieclass.level && Plugintest.accounts[player].Resets == zombieclass.reset)
                 {
                     player.PrintToChat("Elegiste el " + zombieclass.name);
+                    Plugintest.accounts[player].ZombieClass = zombieclass;
+                    // The class name must be saved since we use it in the data base!
+                    Plugintest.accounts[player].SavedZombieClass = zombieclass.name;
+                    //
+                    if (player.PawnIsAlive && player.Team == CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist)
+                    {
+                        player.Respawn();
+                    }
                 }
                 else
                 {
                     player.PrintToChat("No cumples con los requisitos para esta clase!");
                 }
             });
-            zombieMenu.Display(player, 20);
+            
         }
+        zombieMenu.Display(player, 20);
     }
 
 
@@ -250,6 +271,7 @@ public static class MenuUI
         ScreenMenu optionsMenu = new ScreenMenu("Elige una opción", plugin);
         optionsMenu.ScreenMenu_MenuType = CS2MenuManager.API.Enum.MenuType.KeyPress;
         optionsMenu.AddItem("Preferencias de color", (player, option) => { ColoursUI(plugin, player); });
+        optionsMenu.AddItem("Estadisticas de mi cuenta", (player, option) => { StatsMenuUI(plugin, player); });
         optionsMenu.Display(player, 20);
     }
 
@@ -273,6 +295,19 @@ public static class MenuUI
         if (player == null || !player.IsValid) return;
         Plugintest.playercolor[player] = color;
     }
+
+    public static void StatsMenuUI(BasePlugin plugin, CCSPlayerController player)
+    {
+        ScreenMenu statsMenu = new ScreenMenu("Estadisticas:", plugin);
+        statsMenu.ScreenMenu_MenuType = CS2MenuManager.API.Enum.MenuType.KeyPress;
+        var playerdata = Plugintest.accounts[player];
+        foreach (var property in playerdata.GetType().GetProperties())
+        {
+            statsMenu.AddItem(property.Name + " " + property.GetValue(playerdata), (player, option) => { player.PrintToChat("foo"); });
+        }
+        statsMenu.Display(player, 20);
+    }
+
 }
 
 
